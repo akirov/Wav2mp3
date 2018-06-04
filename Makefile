@@ -37,8 +37,9 @@ CPPFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
 #CXXFLAGS += -std=c++11
 #CPPFLAGS += -DUSE_CPP11_THREADS
 RM = rm -f
-#LDLIBS += -lpthread -static -lmp3lame
-LDLIBS += -lpthread -lmp3lame
+#LDLIBS += -lpthread -lmp3lame
+#LDLIBS += -static -lpthread -lmp3lame
+LDLIBS += -Wl,-Bstatic -lmp3lame -Wl,-Bdynamic -lpthread
 
 
 .PHONY: all clean
