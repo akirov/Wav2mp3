@@ -3,6 +3,7 @@
  ******************************************************************************/
 #include <sstream>
 #include <cstdlib>
+#include <vector>
 #include <pthread.h>
 #include "Encoder.h"
 #include "Log.h"
@@ -14,9 +15,6 @@ Encoder::Encoder( shared_ptr<WavFile> wavFilePtr ):
         mWavFilePtr(wavFilePtr),
         mMp3Uri(),
         mLameContext(NULL),
-        mMp3Buffer(NULL),
-        mCopiedDataL(NULL),
-        mCopiedDataR(NULL),
         mMp3File()
 {
 }
@@ -28,9 +26,6 @@ Encoder::~Encoder()
     if( mMp3File.is_open() ) mMp3File.close();
 
     // Free memory resources if still allocated
-    if( mCopiedDataR ) delete[] mCopiedDataR;
-    if( mCopiedDataL ) delete[] mCopiedDataL;
-    if( mMp3Buffer ) delete[] mMp3Buffer;
     if( mLameContext ) lame_close(mLameContext);
 }
 
@@ -146,16 +141,18 @@ int Encoder::encode()
             continue;
         }
 
-        // Allocate mp3 buffer
+        // Allocate mp3 buffer. Will be freed when the vector goes out of scope.
         int numSamples = mWavFilePtr->getRawAudioDataSize() / mWavFilePtr->getFrameSize();
         size_t mp3bufsz = numSamples*5/4 + 7200;  // According to LAME lib
-        mMp3Buffer = new unsigned char[mp3bufsz];
-        if( NULL == mMp3Buffer )
-        {
+        std::vector<unsigned char> mp3BufVec;
+        try {
+            mp3BufVec.resize(mp3bufsz);
+        } catch(...) {
             LOG("ERROR allocating mp3 buffer" << std::endl);
             lame_close(mLameContext); mLameContext = NULL;
             continue;
         }
+        unsigned char* mMp3Buffer = &mp3BufVec[0];
 
         // Encode PCM data in mp3
         uint16_t bps = mWavFilePtr->getBitsPerSample();
@@ -164,15 +161,17 @@ int Encoder::encode()
         {
             if( (8 == bps) && (1 == mWavFilePtr->getFrameSize()) )
             {
-                // Allocate conversion buffer
+                // Allocate temp conversion buffer
                 uint32_t datasz = mWavFilePtr->getRawAudioDataSize();
-                mCopiedDataL = new uint8_t[datasz * sizeof(short int)];
-                if( NULL == mCopiedDataL )
-                {
-                    LOG("ERROR allocating mCopiedDataL buffer" << std::endl);
+                std::vector<uint8_t> copiedDataLVec;
+                try {
+                    copiedDataLVec.resize(datasz * sizeof(short int));
+                } catch(...) {
+                    LOG("ERROR allocating copiedDataLVec" << std::endl);
                     lame_close(mLameContext); mLameContext = NULL;
                     continue;
                 }
+                uint8_t* mCopiedDataL = &copiedDataLVec[0];
 
                 // Copy data in 16-bit buffer mCopiedDataL, converting to signed
                 short int* sip = (short int *) mCopiedDataL;
@@ -190,15 +189,17 @@ int Encoder::encode()
             }
             else if( (24 == bps) && (3 == mWavFilePtr->getFrameSize()) )
             {
-                // Allocate conversion buffer
+                // Allocate temp conversion buffer
                 uint32_t datasz = mWavFilePtr->getRawAudioDataSize();
-                mCopiedDataL = new uint8_t[(datasz/3) * sizeof(int)];
-                if( NULL == mCopiedDataL )
-                {
-                    LOG("ERROR allocating mCopiedDataL buffer" << std::endl);
+                std::vector<uint8_t> copiedDataLVec;
+                try {
+                    copiedDataLVec.resize((datasz/3) * sizeof(int));
+                } catch(...) {
+                    LOG("ERROR allocating copiedDataLVec" << std::endl);
                     lame_close(mLameContext); mLameContext = NULL;
                     continue;
                 }
+                uint8_t* mCopiedDataL = &copiedDataLVec[0];
 
                 // Copy data in 32-bit buffer mCopiedDataL
                 const char* datap = mWavFilePtr->getRawAudioDataPtr();
@@ -224,16 +225,20 @@ int Encoder::encode()
         {
             if( (8 == bps) && (2 == mWavFilePtr->getFrameSize()) )
             {
-                // Allocate conversion buffers
+                // Allocate temp conversion buffers
                 uint32_t datasz = mWavFilePtr->getRawAudioDataSize();
-                mCopiedDataL = new uint8_t[(datasz/2) * sizeof(short int)];
-                mCopiedDataR = new uint8_t[(datasz/2) * sizeof(short int)];
-                if( NULL == mCopiedDataL || NULL == mCopiedDataR )
-                {
-                    LOG("ERROR allocating conversion buffers" << std::endl);
+                std::vector<uint8_t> copiedDataLVec;
+                std::vector<uint8_t> copiedDataRVec;
+                try {
+                    copiedDataLVec.resize((datasz/2) * sizeof(short int));
+                    copiedDataRVec.resize((datasz/2) * sizeof(short int));
+                } catch(...) {
+                    LOG("ERROR allocating copiedDataLVec or copiedDataRVec" << std::endl);
                     lame_close(mLameContext); mLameContext = NULL;
                     continue;
                 }
+                uint8_t* mCopiedDataL = &copiedDataLVec[0];
+                uint8_t* mCopiedDataR = &copiedDataRVec[0];
 
                 // Copy data in 16-bit buffers, converting to signed
                 short int* sipl = (short int *) mCopiedDataL;
@@ -260,9 +265,6 @@ int Encoder::encode()
                 LOG("24-bps stereo is not implemented yet" << std::endl);
                 lame_close(mLameContext); mLameContext = NULL;
                 continue;
-
-                encoded = lame_encode_buffer_int(mLameContext, (int *) mCopiedDataL,
-                        (int *) mCopiedDataR, numSamples, mMp3Buffer, mp3bufsz);
             }
             else if( (32 == bps) || ((24 == bps) && (8 == mWavFilePtr->getFrameSize())) )
             {
@@ -271,16 +273,20 @@ int Encoder::encode()
                         (int *) mWavFilePtr->getRawAudioDataPtr(), numSamples,
                         mMp3Buffer, mp3bufsz);
 #else
-                // Allocate channel buffers
+                // Allocate temp channel buffers
                 uint32_t datasz = mWavFilePtr->getRawAudioDataSize();
-                mCopiedDataL = new uint8_t[datasz/2];
-                mCopiedDataR = new uint8_t[datasz/2];
-                if( NULL == mCopiedDataL || NULL == mCopiedDataR )
-                {
-                    LOG("ERROR allocating channel buffers" << std::endl);
+                std::vector<uint8_t> copiedDataLVec;
+                std::vector<uint8_t> copiedDataRVec;
+                try {
+                    copiedDataLVec.resize(datasz/2);
+                    copiedDataRVec.resize(datasz/2);
+                } catch(...) {
+                    LOG("ERROR allocating copiedDataLVec or copiedDataRVec" << std::endl);
                     lame_close(mLameContext); mLameContext = NULL;
                     continue;
                 }
+                uint8_t* mCopiedDataL = &copiedDataLVec[0];
+                uint8_t* mCopiedDataR = &copiedDataRVec[0];
 
                 // Copy data in separate channel buffers
                 int* lchan = (int *) mCopiedDataL;
@@ -327,21 +333,6 @@ int Encoder::encode()
         {
             mMp3File.close();
             mMp3File.clear();
-        }
-        if( mCopiedDataR )
-        {
-            delete[] mCopiedDataR;
-            mCopiedDataR = NULL;
-        }
-        if( mCopiedDataL )
-        {
-            delete[] mCopiedDataL;
-            mCopiedDataL = NULL;
-        }
-        if( mMp3Buffer )
-        {
-            delete[] mMp3Buffer;
-            mMp3Buffer = NULL;
         }
         lame_close(mLameContext); mLameContext = NULL;
         chunkNum++;

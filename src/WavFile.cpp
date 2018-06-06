@@ -44,7 +44,7 @@ int WavFile::readEntireFile()
     if( mFile.is_open() )
     {
         mFile.seekg(0, std::ios::end);
-        mFileData.resize(mFile.tellg());
+        mFileData.resize(mFile.tellg());  // TODO try-catch?
         mFile.seekg(0, std::ios::beg);
         mFile.read(&mFileData[0], mFileData.size());
         mFile.close();

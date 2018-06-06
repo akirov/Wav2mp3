@@ -50,9 +50,6 @@ class Encoder
     shared_ptr<WavFile> mWavFilePtr;
     std::string         mMp3Uri;
     lame_global_flags*  mLameContext;
-    unsigned char*      mMp3Buffer;
-    uint8_t*            mCopiedDataL; // Buffers to copy and convert 8-bit data
-    uint8_t*            mCopiedDataR; // to 16-bit and 24-bit to 32-bit.
     std::ofstream       mMp3File;
 };
 
