@@ -10,18 +10,24 @@ INCLUDE_DIRS=$(ROOT_DIR)/include
 
 # Set LAME library location, if it is not standard
 ifeq ($(OS),Windows_NT)
-  ifeq (,$(findstring CYGWIN, $(shell uname)))
+  ifneq ($(shell echo $$OSTYPE),cygwin)
     # Windows, but not Cygwin (MinGW)
     BUILD_DIR=$(ROOT_DIR)/build/windows
     INCLUDE_DIRS += $(ROOT_DIR)/../lame-3.100-mingw530_32/include
     LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-mingw530_32/lib
+    RM = del /F /Q /S
+    MKDIR=mkdir
   else
     # Cygwin
     BUILD_DIR=$(ROOT_DIR)/build/cygwin
     LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-cygwin2884_32/lib
+    RM = rm -rf
+    MKDIR=mkdir -p
   endif
 else
   BUILD_DIR=$(ROOT_DIR)/build/linux
+  RM = rm -rf
+  MKDIR=mkdir -p
 endif
 
 
@@ -36,7 +42,6 @@ CXXFLAGS += -g -Wall
 CPPFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
 #CXXFLAGS += -std=c++11
 #CPPFLAGS += -DUSE_CPP11_THREADS
-RM = rm -f
 #LDLIBS += -lpthread -lmp3lame
 #LDLIBS += -static -lpthread -lmp3lame
 LDLIBS += -Wl,-Bstatic -lmp3lame -Wl,-Bdynamic -lpthread
@@ -53,9 +58,9 @@ $(TARGET): $(OBJS)
 
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(HEADERS)
-	@mkdir -p $(@D)
+	-$(MKDIR) "$(@D)"
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
 
 
 clean:
-	$(RM) $(OBJS) $(TARGET)
+	$(RM) "$(BUILD_DIR)"
