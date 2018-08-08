@@ -15,17 +15,24 @@ ifeq ($(OS),Windows_NT)
     BUILD_DIR=$(ROOT_DIR)/build/windows
     INCLUDE_DIRS += $(ROOT_DIR)/../lame-3.100-mingw530_32/include
     LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-mingw530_32/lib
+    LDLIBS += -Wl,-Bstatic -lmp3lame
     RM = del /F /Q /S
     MKDIR=mkdir
   else
     # Cygwin
     BUILD_DIR=$(ROOT_DIR)/build/cygwin
-    LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-cygwin2884_32/lib
+    ifneq ($(shell uname -m),x86_64)
+      LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-cygwin2884_32/lib
+      LDLIBS += -Wl,-Bstatic -lmp3lame
+    else
+      LDLIBS += -lmp3lame
+    endif
     RM = rm -rf
     MKDIR=mkdir -p
   endif
 else
   BUILD_DIR=$(ROOT_DIR)/build/linux
+  LDLIBS += -Wl,-Bstatic -lmp3lame
   RM = rm -rf
   MKDIR=mkdir -p
 endif
@@ -44,7 +51,7 @@ CPPFLAGS += $(foreach includedir,$(INCLUDE_DIRS),-I$(includedir))
 #CPPFLAGS += -DUSE_CPP11_THREADS
 #LDLIBS += -lpthread -lmp3lame
 #LDLIBS += -static -lpthread -lmp3lame
-LDLIBS += -Wl,-Bstatic -lmp3lame -Wl,-Bdynamic -lpthread
+LDLIBS += -Wl,-Bdynamic -lpthread
 
 
 .PHONY: all clean
