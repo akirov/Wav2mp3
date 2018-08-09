@@ -30,8 +30,8 @@ full with wav files (eventually). Workers pick files from the queue and
 encode them in parallel. Manager thread fills the queue with smart pointers to
 wav file objects. The process ends when all wav files are encoded.
 
-Tested on Ubuntu Linux 16.04 x64, MinGW GCC 5.3.0 x32 (from Qt 5.9.4) and MSYS2
-on Windows 10 x64, and with GCC 6.4.0 from Cygwin 2.884 x32 on Windows 10 x64.
+Tested on Ubuntu Linux 16.04 x64 with GCC 5.4.0 and on Windows 10 x64 with
+MinGW GCC 5.3.0 x32 (from Qt 5.9), and with GCC 6.4.0 and 7.3.0 from Cygwin.
 On Ubuntu and Cygwin need to install libmp3lame-dev package. LAME library can
 be linked statically in the executable. On Windows may need to build LAME
 from source to get static libraries. Also may need to apply patch from
