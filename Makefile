@@ -22,6 +22,7 @@ ifeq ($(OS),Windows_NT)
     # Cygwin
     BUILD_DIR=$(ROOT_DIR)/build/cygwin
     ifneq ($(shell uname -m),x86_64)
+      #INCLUDE_DIRS += $(ROOT_DIR)/../lame-3.100-cygwin2884_32/include
       LDFLAGS += -L$(ROOT_DIR)/../lame-3.100-cygwin2884_32/lib
       LDLIBS += -Wl,-Bstatic -lmp3lame
     else
