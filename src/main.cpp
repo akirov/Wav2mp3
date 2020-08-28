@@ -209,7 +209,7 @@ int main(int argc, char* argv[])
     pthread_t managerThread;
     pthread_create(&managerThread, 0, work_manager, wavFileQueuePtr.get());
 
-    // Wait until work queue is at least half full?
+    // Wait until work queue is at least half full? Use a barier?
 
     // Create pool of encoding threads (workers) and point them to the work queue
     pthread_t encoderThreads[numCores];

@@ -46,5 +46,6 @@ TODO:
 - add encoding options to Encoder class methods
 - put manager, workers and globals in a class
 - use C++11 threads instead of POSIX threads
+- lock-free queue implementation?
 - support more wave formats
 - Qt GUI?
